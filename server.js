@@ -70,6 +70,25 @@ app.post('/add-links', async (req, res) => {
   }
 });
 
+app.patch('/links/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateFields = req.body;
+
+    const updated = await Link.findByIdAndUpdate(id, updateFields, { new: true });
+
+    if (!updated) {
+      return res.status(404).json({ message: "❌ Document not found" });
+    }
+
+    res.json({ message: `✅ Document ${id} updated successfully`, data: updated });
+  } catch (error) {
+    console.error("❌ Error updating document:", error);
+    res.status(500).send("Server Error");
+  }
+});
+
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}/links`);
 });
