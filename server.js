@@ -3,47 +3,58 @@ const cors = require("cors");
 const { MongoClient } = require("mongodb");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-// MongoDB connection string
-const uri = "mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/";
+const mongoURI = "mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/";
+const client = new MongoClient(mongoURI);
+
+let collection;
 
 app.use(cors());
 
 app.get("/links", async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 100;
+  const skip = (page - 1) * limit;
+
+  console.log(`Received request: page=${page}, limit=${limit}`);
+
   try {
-    const client = new MongoClient(uri);
-    await client.connect();
+    const totalDocuments = await collection.countDocuments();
+    const totalPages = Math.ceil(totalDocuments / limit);
 
-    const db = client.db("Link_Database");
-    const collection = db.collection("Links"); // ✅ Updated collection name
+    const data = await collection.find({})
+      .skip(skip)
+      .limit(limit)
+      .toArray();
 
-    // Pagination (load 1000 at a time)
-    const skip = parseInt(req.query.skip) || 0;
-    const limit = 1000;
+    console.log(`Sending ${data.length} records (Page ${page} of ${totalPages})`);
 
-    const data = await collection.find({}).skip(skip).limit(limit).toArray();
-
-    // Clean data
-    const cleaned = data.map(doc => ({
-      id: doc._id.toString(),
-      Links: doc.Links || "",
-      Observation: doc.Observation || "",
-      University: doc.University || "",
-      Country: doc.Country || "",
-      Year: doc.Year || "",
-      GroupName: doc.GroupName || "",
-      GroupType: doc["Group Type"] || ""
-    }));
-
-    res.json(cleaned);
-    await client.close();
+    res.json({
+      data,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
-    console.error("Error fetching data:", error);
-    res.status(500).json({ error: "Failed to fetch data" });
+    console.error("Error fetching links:", error);
+    res.status(500).json({ error: "Error fetching data" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}/links`);
-});
+async function startServer() {
+  try {
+    await client.connect();
+    console.log("✅ MongoDB connection successful");
+
+    const db = client.db("Link_Database");
+    collection = db.collection("Links");
+
+    app.listen(port, () => {
+      console.log(`🚀 Server running on http://localhost:${port}`);
+    });
+  } catch (error) {
+    console.error("❌ MongoDB connection error:", error);
+  }
+}
+
+startServer();
