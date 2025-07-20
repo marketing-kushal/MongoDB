@@ -24,7 +24,10 @@ app.get('/links', async (req, res) => {
       id: doc._id.toString(),                   // Convert ObjectId to string
       Links: doc.Links || "",                   // Handle missing fields gracefully
       Observation: doc.Observation || "",
+      University: doc.University || "",
       Country: doc.Country || "",
+      Year: doc.Year || "",
+      GroupName: doc.GroupName || "",
       GroupType: doc["Group Type"] || ""        // Convert "Group Type" with space to GroupType
     }));
 
