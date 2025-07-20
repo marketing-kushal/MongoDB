@@ -50,25 +50,37 @@ app.get('/links', async (req, res) => {
 });
 
 // ✅ POST new links (only if not already present)
+
 app.post('/add-links', async (req, res) => {
   try {
-    const newLinks = req.body;
-    let addedCount = 0;
+    const linksData = req.body;
+    let added = 0;
+    let updated = 0;
 
-    for (const entry of newLinks) {
-      const exists = await Link.findOne({ Links: entry.Links });
-      if (!exists) {
+    for (const entry of linksData) {
+      // Skip if there's no link
+      if (!entry.Links || entry.Links.trim() === "") continue;
+
+      const existing = await Link.findOne({ Links: entry.Links });
+
+      if (existing) {
+        // Update all other fields based on link
+        await Link.updateOne({ Links: entry.Links }, { $set: entry });
+        updated++;
+      } else {
+        // Insert new unique link
         await Link.create(entry);
-        addedCount++;
+        added++;
       }
     }
 
-    res.json({ message: `✅ ${addedCount} new unique links added.` });
+    res.json({ message: `✅ ${added} added, 🔁 ${updated} updated.` });
   } catch (error) {
-    console.error("❌ Error adding links:", error);
+    console.error("❌ Error in /add-links:", error);
     res.status(500).send("Server Error");
   }
 });
+
 
 app.patch('/links/:id', async (req, res) => {
   try {
