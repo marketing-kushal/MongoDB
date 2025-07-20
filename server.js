@@ -1,18 +1,19 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const bodyParser = require("body-parser");
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
-
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = "mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/Link_Database?retryWrites=true&w=majority";
 
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.error("❌ MongoDB Connection Error:", err));
+app.use(cors());
+app.use(express.json());
+
+mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/Link_Database", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log("✅ MongoDB Connected"))
+.catch(err => console.error("❌ MongoDB connection error:", err));
 
 const linkSchema = new mongoose.Schema({
   Links: String,
@@ -24,61 +25,51 @@ const linkSchema = new mongoose.Schema({
   GroupType: String,
   Joining: String,
   Timestamp: String
+}, {
+  collection: 'Links' // ✅ Force the use of capital 'Links'
 });
 
-const Link = mongoose.model("Links", linkSchema);
+const Link = mongoose.model("Link", linkSchema);
 
-// ✅ Fetch with Pagination
-app.get("/links", async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 1000;
-  const skip = (page - 1) * limit;
-
+// 🚀 GET paginated links
+app.get('/links', async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 1000;
+    const skip = (page - 1) * limit;
+
     const total = await Link.countDocuments();
     const totalPages = Math.ceil(total / limit);
+    const data = await Link.find().skip(skip).limit(limit);
 
-    const links = await Link.find().skip(skip).limit(limit);
-    const cleaned = links.map(doc => ({
-      id: doc._id.toString(),
-      Links: doc.Links || "",
-      Observation: doc.Observation || "",
-      University: doc.University || "",
-      Country: doc.Country || "",
-      Year: doc.Year || "",
-      GroupName: doc.GroupName || "",
-      GroupType: doc.GroupType || "",
-      Joining: doc.Joining || "",
-      Timestamp: doc.Timestamp || ""
-    }));
-
-    res.json({ data: cleaned, totalPages });
+    res.json({ data, totalPages });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch links" });
+    console.error("❌ Error fetching links:", error);
+    res.status(500).send("Server Error");
   }
 });
 
-// ✅ Insert only Unique Links from NEW_Links
-app.post("/add-links", async (req, res) => {
+// ✅ POST new links (only if not already present)
+app.post('/add-links', async (req, res) => {
   try {
     const newLinks = req.body;
-    const added = [];
+    let addedCount = 0;
 
-    for (let link of newLinks) {
-      const exists = await Link.findOne({ Links: link.Links });
+    for (const entry of newLinks) {
+      const exists = await Link.findOne({ Links: entry.Links });
       if (!exists) {
-        const doc = new Link(link);
-        await doc.save();
-        added.push(link.Links);
+        await Link.create(entry);
+        addedCount++;
       }
     }
 
-    res.json({ message: `${added.length} unique links added.` });
+    res.json({ message: `✅ ${addedCount} new unique links added.` });
   } catch (error) {
-    res.status(500).json({ error: "Failed to insert links" });
+    console.error("❌ Error adding links:", error);
+    res.status(500).send("Server Error");
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}/links`);
 });
