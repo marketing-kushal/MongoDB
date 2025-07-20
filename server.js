@@ -1,43 +1,62 @@
-const express = require('express');
-const { MongoClient } = require('mongodb');
-const cors = require('cors');
-
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
 const app = express();
+const PORT = process.env.PORT || 10000;
+
+// MongoDB connection
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/?retryWrites=true&w=majority";
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+const db = mongoose.connection;
+db.on("error", console.error.bind(console, "MongoDB connection error:"));
+db.once("open", () => {
+  console.log("Connected to MongoDB");
+});
+
 app.use(cors());
 
-// MongoDB Atlas URI
-const uri = "mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/";
+// Mongoose schema
+const linkSchema = new mongoose.Schema({}, { strict: false });
+const Link = mongoose.model("All_Links", linkSchema, "All_Links");
 
-// Create MongoDB client
-const client = new MongoClient(uri);
+// API endpoint with pagination
+app.get("/links", async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 1000;
+  const skip = (page - 1) * limit;
 
-// Endpoint to fetch links
-app.get('/links', async (req, res) => {
   try {
-    await client.connect();
-    const collection = client.db('Link_Database').collection('All_Links');
+    const total = await Link.countDocuments();
+    const totalPages = Math.ceil(total / limit);
+    const data = await Link.find().skip(skip).limit(limit);
 
-    const data = await collection.find({}).toArray();
-
-    // Clean up each document
+    // Cleaned format as you asked
     const cleaned = data.map(doc => ({
-      id: doc._id.toString(),                   // Convert ObjectId to string
-      Links: doc.Links || "",                   // Handle missing fields gracefully
+      id: doc._id.toString(),
+      Links: doc.Links || "",
       Observation: doc.Observation || "",
       University: doc.University || "",
       Country: doc.Country || "",
       Year: doc.Year || "",
       GroupName: doc.GroupName || "",
-      GroupType: doc["Group Type"] || ""        // Convert "Group Type" with space to GroupType
+      GroupType: doc["Group Type"] || "",
     }));
 
-    res.json(cleaned);
-  } catch (error) {
-    console.error("Failed to fetch data:", error);
-    res.status(500).send("Error fetching data from MongoDB");
+    res.json({
+      page,
+      totalPages,
+      totalRecords: total,
+      data: cleaned,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
   }
 });
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}/links`));
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}/links`);
+});
