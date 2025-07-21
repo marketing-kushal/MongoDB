@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// ✅ MongoDB Connection
 mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/Link_Database", {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -15,6 +16,7 @@ mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.
 .then(() => console.log("✅ MongoDB Connected"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
+// ✅ Schema
 const linkSchema = new mongoose.Schema({
   Links: String,
   Observation: String,
@@ -26,12 +28,12 @@ const linkSchema = new mongoose.Schema({
   Joining: String,
   Timestamp: String
 }, {
-  collection: 'Links' // ✅ Force the use of capital 'Links'
+  collection: 'Links' // ✅ Force capital 'Links'
 });
 
 const Link = mongoose.model("Link", linkSchema);
 
-// 🚀 GET paginated links
+// ✅ GET paginated links
 app.get('/links', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -49,8 +51,7 @@ app.get('/links', async (req, res) => {
   }
 });
 
-// ✅ POST new links (only if not already present)
-
+// ✅ POST - Add or update by unique Links
 app.post('/add-links', async (req, res) => {
   try {
     const linksData = req.body;
@@ -58,18 +59,18 @@ app.post('/add-links', async (req, res) => {
     let updated = 0;
 
     for (const entry of linksData) {
-      // Skip if there's no link
       if (!entry.Links || entry.Links.trim() === "") continue;
 
-      const existing = await Link.findOne({ Links: entry.Links });
+      const trimmedLink = entry.Links.trim();
+      const existing = await Link.findOne({ Links: trimmedLink });
 
       if (existing) {
-        // Update all other fields based on link
-        await Link.updateOne({ Links: entry.Links }, { $set: entry });
+        // Update all fields if link exists
+        await Link.updateOne({ Links: trimmedLink }, { $set: entry });
         updated++;
       } else {
-        // Insert new unique link
-        await Link.create(entry);
+        // Create new entry
+        await Link.create({ ...entry, Links: trimmedLink });
         added++;
       }
     }
@@ -81,7 +82,7 @@ app.post('/add-links', async (req, res) => {
   }
 });
 
-
+// ✅ PATCH - Update by ObjectID
 app.patch('/links/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -100,7 +101,7 @@ app.patch('/links/:id', async (req, res) => {
   }
 });
 
-
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}/links`);
 });
