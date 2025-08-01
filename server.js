@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // ✅ MongoDB Connection
 mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/Link_Database", {
@@ -139,4 +139,6 @@ app.patch('/links/:id', async (req, res) => {
 // ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}/links`);
+  console.log(`🚀 Server running on http://localhost:${PORT}/FB_Data`);
+
 });
