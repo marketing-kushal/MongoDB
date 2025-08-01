@@ -16,7 +16,7 @@ mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.
 .then(() => console.log("✅ MongoDB Connected"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// ✅ Schema
+// ✅ Schema for Links collection
 const linkSchema = new mongoose.Schema({
   Links: String,
   Observation: String,
@@ -28,12 +28,26 @@ const linkSchema = new mongoose.Schema({
   Joining: String,
   Timestamp: String
 }, {
-  collection: 'Links' // ✅ Force capital 'Links'
+  collection: 'Links' // Existing collection
 });
 
 const Link = mongoose.model("Link", linkSchema);
 
-// ✅ GET paginated links
+// ✅ Schema for FB_Data collection
+const fbSchema = new mongoose.Schema({
+  University: String,
+  Country: String,
+  Group_Link: String,
+  FB_ID: String,
+  Group_Status: String,
+  Join_Status: String
+}, {
+  collection: 'FB_Data' // Targeting FB_Data collection
+});
+
+const FBData = mongoose.model("FBData", fbSchema);
+
+// ✅ GET paginated links from Links collection
 app.get('/links', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -65,11 +79,9 @@ app.post('/add-links', async (req, res) => {
       const existing = await Link.findOne({ Links: trimmedLink });
 
       if (existing) {
-        // Update all fields if link exists
         await Link.updateOne({ Links: trimmedLink }, { $set: entry });
         updated++;
       } else {
-        // Create new entry
         await Link.create({ ...entry, Links: trimmedLink });
         added++;
       }
@@ -82,7 +94,30 @@ app.post('/add-links', async (req, res) => {
   }
 });
 
-// ✅ PATCH - Update by ObjectID
+// ✅ POST - Insert into FB_Data collection
+app.post('/FB_Data', async (req, res) => {
+  try {
+    const data = req.body;
+    let added = 0;
+
+    for (const entry of data) {
+      if (!entry.Group_Link || entry.Group_Link.trim() === "") continue;
+
+      const exists = await FBData.findOne({ Group_Link: entry.Group_Link.trim() });
+      if (exists) continue;
+
+      await FBData.create(entry);
+      added++;
+    }
+
+    res.json({ message: `✅ ${added} rows inserted into FB_Data` });
+  } catch (error) {
+    console.error("❌ Error in /FB_Data:", error);
+    res.status(500).send("Server Error");
+  }
+});
+
+// ✅ PATCH - Update document by ObjectID
 app.patch('/links/:id', async (req, res) => {
   try {
     const { id } = req.params;
