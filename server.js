@@ -41,7 +41,9 @@ const fbSchema = new mongoose.Schema({
   Group_Link: String,
   FB_ID: String,
   Group_Status: String,
-  Join_Status: String
+  Join_Status: String,
+  Timestamp: String
+
 }, {
   collection: 'FB_Data'
 });
@@ -117,4 +119,5 @@ app.patch('/links/:id', async (req, res) => {
 // ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}/links`);
+  console.log(`🚀 Server running on http://localhost:${PORT}/FB_Data`);
 });
