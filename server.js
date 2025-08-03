@@ -46,6 +46,19 @@ const fbSchema = new mongoose.Schema({
 
 const FBData = mongoose.model("FBData", fbSchema);
 
+// ✅ Schema for All_Data collection (Dropdown sheet)
+const allDataSchema = new mongoose.Schema({
+  Name: String,
+  Joining: String,
+  University: String,
+  Country: String,
+  Year: String,
+  Observation: String,
+  GroupType: String
+}, { collection: 'All_Data' });
+
+const AllData = mongoose.model('AllData', allDataSchema);
+
 /* ------------------ ROUTES ------------------ */
 
 // ✅ GET paginated Links data
@@ -128,6 +141,41 @@ app.post('/FB_Data', async (req, res) => {
   }
 });
 
+// ✅ POST to insert dropdown data into All_Data collection
+app.post('/add-dropdown-data', async (req, res) => {
+  try {
+    const data = req.body;
+    let added = 0;
+    let updated = 0;
+
+    for (const entry of data) {
+      const query = {
+        Name: entry.Name,
+        Joining: entry.Joining,
+        University: entry.University,
+        Country: entry.Country,
+        Year: entry.Year,
+        Observation: entry.Observation,
+        GroupType: entry.GroupType
+      };
+
+      const exists = await AllData.findOne(query);
+      if (exists) {
+        updated++;
+        continue;
+      }
+
+      await AllData.create(entry);
+      added++;
+    }
+
+    res.json({ message: `✅ ${added} added, 🔁 ${updated} already existed.` });
+  } catch (err) {
+    console.error("❌ Error saving dropdown data:", err);
+    res.status(500).send("Server error");
+  }
+});
+
 // ✅ PATCH single document in Links collection by ID
 app.patch('/links/:id', async (req, res) => {
   try {
@@ -152,4 +200,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`✅ POST /add-links → Links`);
   console.log(`✅ POST /FB_Data → FB_Data`);
+  console.log(`✅ POST /add-dropdown-data → All_Data`);
 });
