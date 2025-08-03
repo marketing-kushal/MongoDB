@@ -6,8 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-// ✅ Increase payload limit to 10MB
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
 
 // ✅ MongoDB Connection
 mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/Link_Database", {
@@ -17,7 +16,7 @@ mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.
 .then(() => console.log("✅ MongoDB Connected"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// ✅ Schema for Links collection (existing)
+// ✅ Schema
 const linkSchema = new mongoose.Schema({
   Links: String,
   Observation: String,
@@ -29,28 +28,12 @@ const linkSchema = new mongoose.Schema({
   Joining: String,
   Timestamp: String
 }, {
-  collection: 'Links'
+  collection: 'Links' // ✅ Force capital 'Links'
 });
 
 const Link = mongoose.model("Link", linkSchema);
 
-// ✅ Schema for FB_Data collection
-const fbSchema = new mongoose.Schema({
-  University: String,
-  Country: String,
-  Group_Link: String,
-  FB_ID: String,
-  Group_Status: String,
-  Join_Status: String,
-  Timestamp: String
-
-}, {
-  collection: 'FB_Data'
-});
-
-const FBData = mongoose.model("FBData", fbSchema);
-
-// ✅ GET from Links collection
+// ✅ GET paginated links
 app.get('/links', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -68,36 +51,38 @@ app.get('/links', async (req, res) => {
   }
 });
 
-// ✅ POST to insert/update into FB_Data
-app.post('/FB_Data', async (req, res) => {
+// ✅ POST - Add or update by unique Links
+app.post('/add-links', async (req, res) => {
   try {
-    const data = req.body;
+    const linksData = req.body;
     let added = 0;
     let updated = 0;
 
-    for (const entry of data) {
-      if (!entry.Group_Link || entry.Group_Link.trim() === "") continue;
+    for (const entry of linksData) {
+      if (!entry.Links || entry.Links.trim() === "") continue;
 
-      const trimmedLink = entry.Group_Link.trim();
-      const existing = await FBData.findOne({ Group_Link: trimmedLink });
+      const trimmedLink = entry.Links.trim();
+      const existing = await Link.findOne({ Links: trimmedLink });
 
       if (existing) {
-        await FBData.updateOne({ Group_Link: trimmedLink }, { $set: entry });
+        // Update all fields if link exists
+        await Link.updateOne({ Links: trimmedLink }, { $set: entry });
         updated++;
       } else {
-        await FBData.create(entry);
+        // Create new entry
+        await Link.create({ ...entry, Links: trimmedLink });
         added++;
       }
     }
 
-    res.json({ message: `✅ ${added} inserted, 🔁 ${updated} updated.` });
+    res.json({ message: `✅ ${added} added, 🔁 ${updated} updated.` });
   } catch (error) {
-    console.error("❌ Error in /FB_Data:", error);
+    console.error("❌ Error in /add-links:", error);
     res.status(500).send("Server Error");
   }
 });
 
-// ✅ PATCH - Update by ObjectID in Links
+// ✅ PATCH - Update by ObjectID
 app.patch('/links/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -119,5 +104,4 @@ app.patch('/links/:id', async (req, res) => {
 // ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}/links`);
-  console.log(`🚀 Server running on http://localhost:${PORT}/FB_Data`);
 });
