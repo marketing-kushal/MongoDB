@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // ✅ Handles large batch requests
 
 // ✅ MongoDB Connection
 mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/Link_Database", {
@@ -16,7 +16,9 @@ mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.
 .then(() => console.log("✅ MongoDB Connected"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// ✅ Schema
+/* ------------------ SCHEMAS ------------------ */
+
+// ✅ Schema for Links collection (NEW_Links sheet)
 const linkSchema = new mongoose.Schema({
   Links: String,
   Observation: String,
@@ -27,13 +29,26 @@ const linkSchema = new mongoose.Schema({
   GroupType: String,
   Joining: String,
   Timestamp: String
-}, {
-  collection: 'Links' // ✅ Force capital 'Links'
-});
+}, { collection: 'Links' });
 
 const Link = mongoose.model("Link", linkSchema);
 
-// ✅ GET paginated links
+// ✅ Schema for FB_Data collection (FB Group link sheet)
+const fbSchema = new mongoose.Schema({
+  University: String,
+  Country: String,
+  Group_Link: String,
+  FB_ID: String,
+  Group_Status: String,
+  Join_Status: String,
+  Timestamp: String
+}, { collection: 'FB_Data' });
+
+const FBData = mongoose.model("FBData", fbSchema);
+
+/* ------------------ ROUTES ------------------ */
+
+// ✅ GET paginated Links data
 app.get('/links', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -51,12 +66,11 @@ app.get('/links', async (req, res) => {
   }
 });
 
-// ✅ POST - Add or update by unique Links
+// ✅ POST to add/update Links collection (from NEW_Links sheet)
 app.post('/add-links', async (req, res) => {
   try {
     const linksData = req.body;
-    let added = 0;
-    let updated = 0;
+    let added = 0, updated = 0;
 
     for (const entry of linksData) {
       if (!entry.Links || entry.Links.trim() === "") continue;
@@ -65,11 +79,12 @@ app.post('/add-links', async (req, res) => {
       const existing = await Link.findOne({ Links: trimmedLink });
 
       if (existing) {
-        // Update all fields if link exists
-        await Link.updateOne({ Links: trimmedLink }, { $set: entry });
-        updated++;
+        const changed = Object.keys(entry).some(key => entry[key] !== existing[key]);
+        if (changed) {
+          await Link.updateOne({ Links: trimmedLink }, { $set: entry });
+          updated++;
+        }
       } else {
-        // Create new entry
         await Link.create({ ...entry, Links: trimmedLink });
         added++;
       }
@@ -82,7 +97,38 @@ app.post('/add-links', async (req, res) => {
   }
 });
 
-// ✅ PATCH - Update by ObjectID
+// ✅ POST to insert/update FB_Data collection (from FB Group link sheet)
+app.post('/FB_Data', async (req, res) => {
+  try {
+    const data = req.body;
+    let added = 0, updated = 0;
+
+    for (const entry of data) {
+      if (!entry.Group_Link || entry.Group_Link.trim() === "") continue;
+
+      const trimmedLink = entry.Group_Link.trim();
+      const existing = await FBData.findOne({ Group_Link: trimmedLink });
+
+      if (existing) {
+        const changed = Object.keys(entry).some(key => entry[key] !== existing[key]);
+        if (changed) {
+          await FBData.updateOne({ Group_Link: trimmedLink }, { $set: entry });
+          updated++;
+        }
+      } else {
+        await FBData.create({ ...entry, Group_Link: trimmedLink });
+        added++;
+      }
+    }
+
+    res.json({ message: `✅ ${added} inserted, 🔁 ${updated} updated.` });
+  } catch (error) {
+    console.error("❌ Error in /FB_Data:", error);
+    res.status(500).send("Server Error");
+  }
+});
+
+// ✅ PATCH single document in Links collection by ID
 app.patch('/links/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -101,7 +147,9 @@ app.patch('/links/:id', async (req, res) => {
   }
 });
 
-// ✅ Start server
+/* ------------------ SERVER START ------------------ */
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}/links`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`✅ POST /add-links → Links`);
+  console.log(`✅ POST /FB_Data → FB_Data`);
 });
