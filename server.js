@@ -46,18 +46,13 @@ const fbSchema = new mongoose.Schema({
 
 const FBData = mongoose.model("FBData", fbSchema);
 
-// ✅ Schema for All_Data collection (Dropdown sheet)
-const allDataSchema = new mongoose.Schema({
-  Name: String,
-  Joining: String,
-  University: String,
-  Country: String,
-  Year: String,
-  Observation: String,
-  GroupType: String
-}, { collection: 'All_Data' });
+// ✅ Schema for unified dropdown values (All_Data)
+const dropdownSchema = new mongoose.Schema({
+  type: { type: String, required: true },
+  value: { type: String, required: true }
+}, { collection: 'All_Data', timestamps: true });
 
-const AllData = mongoose.model('AllData', allDataSchema);
+const Dropdown = mongoose.model("Dropdown", dropdownSchema);
 
 /* ------------------ ROUTES ------------------ */
 
@@ -142,36 +137,43 @@ app.post('/FB_Data', async (req, res) => {
 });
 
 // ✅ POST to insert dropdown data into All_Data collection
-app.post('/add-dropdown-data', async (req, res) => {
+app.post('/add-dropdowns', async (req, res) => {
   try {
-    const data = req.body;
+    const data = req.body; // [{ type: 'University', value: 'ABC University' }, ...]
     let added = 0;
-    let updated = 0;
+    let skipped = 0;
 
     for (const entry of data) {
-      const query = {
-        Name: entry.Name,
-        Joining: entry.Joining,
-        University: entry.University,
-        Country: entry.Country,
-        Year: entry.Year,
-        Observation: entry.Observation,
-        GroupType: entry.GroupType
-      };
-
-      const exists = await AllData.findOne(query);
+      const exists = await Dropdown.findOne({ type: entry.type, value: entry.value });
       if (exists) {
-        updated++;
+        skipped++;
         continue;
       }
-
-      await AllData.create(entry);
+      await Dropdown.create(entry);
       added++;
     }
 
-    res.json({ message: `✅ ${added} added, 🔁 ${updated} already existed.` });
+    res.json({ message: `✅ ${added} added, 🔁 ${skipped} skipped.` });
   } catch (err) {
-    console.error("❌ Error saving dropdown data:", err);
+    console.error("❌ Error saving dropdowns:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+// ✅ GET route to fetch dropdowns grouped by type
+app.get('/dropdowns', async (req, res) => {
+  try {
+    const all = await Dropdown.find();
+    const result = {};
+
+    all.forEach(doc => {
+      if (!result[doc.type]) result[doc.type] = [];
+      result[doc.type].push(doc.value);
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error("❌ Error fetching dropdowns:", err);
     res.status(500).send("Server error");
   }
 });
@@ -200,5 +202,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`✅ POST /add-links → Links`);
   console.log(`✅ POST /FB_Data → FB_Data`);
-  console.log(`✅ POST /add-dropdown-data → All_Data`);
+  console.log(`✅ POST /add-dropdowns → All_Data`);
+  console.log(`✅ GET /dropdowns → fetch grouped dropdowns`);
 });
