@@ -50,7 +50,7 @@ const FBData = mongoose.model("FBData", fbSchema);
 const dropdownSchema = new mongoose.Schema({
   type: { type: String, required: true },
   value: { type: String, required: true }
-}, { collection: 'All_Data', timestamps: true });
+}, { collection: 'All_Data' });
 
 const Dropdown = mongoose.model("Dropdown", dropdownSchema);
 
