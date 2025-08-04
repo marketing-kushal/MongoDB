@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // ✅ Handles large batch requests
+app.use(express.json({ limit: '10mb' }));
 
 // ✅ MongoDB Connection
 mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.net/Link_Database", {
@@ -18,7 +18,7 @@ mongoose.connect("mongodb+srv://marketingktp85:Kushal123@kushal13.oyvr7.mongodb.
 
 /* ------------------ SCHEMAS ------------------ */
 
-// ✅ Schema for Links collection (NEW_Links sheet)
+// ✅ Links Schema
 const linkSchema = new mongoose.Schema({
   Links: String,
   Observation: String,
@@ -33,7 +33,7 @@ const linkSchema = new mongoose.Schema({
 
 const Link = mongoose.model("Link", linkSchema);
 
-// ✅ Schema for FB_Data collection (FB Group link sheet)
+// ✅ FB_Data Schema
 const fbSchema = new mongoose.Schema({
   University: String,
   Country: String,
@@ -46,7 +46,7 @@ const fbSchema = new mongoose.Schema({
 
 const FBData = mongoose.model("FBData", fbSchema);
 
-// ✅ Schema for unified dropdown values (All_Data)
+// ✅ Dropdown Schema
 const dropdownSchema = new mongoose.Schema({
   type: { type: String, required: true },
   value: { type: String, required: true }
@@ -56,7 +56,7 @@ const Dropdown = mongoose.model("Dropdown", dropdownSchema);
 
 /* ------------------ ROUTES ------------------ */
 
-// ✅ GET paginated Links data
+// ✅ GET paginated links
 app.get('/links', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -74,7 +74,7 @@ app.get('/links', async (req, res) => {
   }
 });
 
-// ✅ POST to add/update Links collection (from NEW_Links sheet)
+// ✅ POST to add/update Links
 app.post('/add-links', async (req, res) => {
   try {
     const linksData = req.body;
@@ -105,7 +105,7 @@ app.post('/add-links', async (req, res) => {
   }
 });
 
-// ✅ POST to insert/update FB_Data collection (from FB Group link sheet)
+// ✅ POST to add/update FB_Data
 app.post('/FB_Data', async (req, res) => {
   try {
     const data = req.body;
@@ -136,10 +136,10 @@ app.post('/FB_Data', async (req, res) => {
   }
 });
 
-// ✅ POST to insert dropdown data into All_Data collection
+// ✅ POST to add dropdowns
 app.post('/add-dropdowns', async (req, res) => {
   try {
-    const data = req.body; // [{ type: 'University', value: 'ABC University' }, ...]
+    const data = req.body;
     let added = 0;
     let skipped = 0;
 
@@ -160,7 +160,7 @@ app.post('/add-dropdowns', async (req, res) => {
   }
 });
 
-// ✅ GET route to fetch dropdowns grouped by type
+// ✅ GET dropdowns grouped by type
 app.get('/dropdowns', async (req, res) => {
   try {
     const all = await Dropdown.find();
@@ -178,7 +178,18 @@ app.get('/dropdowns', async (req, res) => {
   }
 });
 
-// ✅ PATCH single document in Links collection by ID
+// ✅ GET all dropdowns as flat array (for Apps Script deduplication)
+app.get('/all-dropdowns', async (req, res) => {
+  try {
+    const all = await Dropdown.find({}, { type: 1, value: 1, _id: 0 });
+    res.json(all); // Example: [{ type: "Country", value: "India" }]
+  } catch (err) {
+    console.error("❌ Error in /all-dropdowns:", err);
+    res.status(500).send("Server Error");
+  }
+});
+
+// ✅ PATCH individual link by ID
 app.patch('/links/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -204,4 +215,5 @@ app.listen(PORT, () => {
   console.log(`✅ POST /FB_Data → FB_Data`);
   console.log(`✅ POST /add-dropdowns → All_Data`);
   console.log(`✅ GET /dropdowns → fetch grouped dropdowns`);
+  console.log(`✅ GET /all-dropdowns → fetch flat dropdowns`);
 });
