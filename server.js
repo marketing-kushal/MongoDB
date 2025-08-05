@@ -33,6 +33,12 @@ const linkSchema = new mongoose.Schema({
 
 const Link = mongoose.model("Link", linkSchema);
 
+// Create unique index on Links for fast existence check and uniqueness enforcement
+Link.collection.createIndex({ Links: 1 }, { unique: true }, (err, result) => {
+  if (err) console.error("❌ Error creating index on Links:", err);
+  else console.log("✅ MongoDB unique index created on Links field");
+});
+
 // ✅ FB_Data Schema
 const fbSchema = new mongoose.Schema({
   University: String,
@@ -55,6 +61,22 @@ const dropdownSchema = new mongoose.Schema({
 const Dropdown = mongoose.model("Dropdown", dropdownSchema);
 
 /* ------------------ ROUTES ------------------ */
+
+// New: GET /links/exist?link=... to check if link exists
+app.get('/links/exist', async (req, res) => {
+  try {
+    const link = req.query.link;
+    if (!link || !link.trim()) {
+      return res.status(400).json({ error: "Missing link query parameter" });
+    }
+    const trimmedLink = link.trim();
+    const exists = await Link.exists({ Links: trimmedLink });
+    res.json({ exists: Boolean(exists) });
+  } catch (error) {
+    console.error("❌ Error checking link existence:", error);
+    res.status(500).send("Server Error");
+  }
+});
 
 // ✅ GET paginated links
 app.get('/links', async (req, res) => {
@@ -216,4 +238,5 @@ app.listen(PORT, () => {
   console.log(`✅ POST /add-dropdowns → All_Data`);
   console.log(`✅ GET /dropdowns → fetch grouped dropdowns`);
   console.log(`✅ GET /all-dropdowns → fetch flat dropdowns`);
+  console.log(`✅ GET /links/exist → check link existence`);
 });
