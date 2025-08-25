@@ -28,7 +28,9 @@ const linkSchema = new mongoose.Schema({
   GroupName: String,
   GroupType: String,
   Joining: String,
-  Timestamp: String
+  Timestamp: String,
+  Name: String
+
 }, { collection: 'Links' });
 
 const Link = mongoose.model("Link", linkSchema);
