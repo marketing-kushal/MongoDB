@@ -132,7 +132,9 @@ app.post('/add-links', async (req, res) => {
 // ✅ POST to add/update FB_Data
 app.post('/FB_Data', async (req, res) => {
   try {
-    const data = req.body;
+    // Fix: Handle both { data: [...] } and [...]
+    const data = req.body.data || req.body;
+    
     let added = 0, updated = 0;
 
     for (const entry of data) {
