@@ -62,6 +62,16 @@ const dropdownSchema = new mongoose.Schema({
 
 const Dropdown = mongoose.model("Dropdown", dropdownSchema);
 
+// ✅ FB_Accounts_Details Schema (stores credentials/profile info)
+const fbAccountsSchema = new mongoose.Schema({
+  "Username": String,
+  "Password": String,
+  "ID Name": String,
+  "Chrome Profile": Number
+}, { collection: 'FB_Accounts_Details' });
+
+const FBAccounts = mongoose.model("FBAccounts", fbAccountsSchema, "FB_Accounts_Details");
+
 /* ------------------ ROUTES ------------------ */
 
 // New: GET /links/exist?link=... to check if link exists
@@ -161,6 +171,46 @@ app.post('/FB_Data', async (req, res) => {
     res.status(500).send("Server Error");
   }
 });
+
+// ✅ POST to add/update FB accounts details
+app.post('/FB_Accounts_Details', async (req, res) => {
+  try {
+    const data = req.body.data || req.body;
+    let added = 0, updated = 0;
+
+    for (const entry of data) {
+      // Require Username at minimum
+      if (!entry.Username || entry.Username.trim() === "") continue;
+
+      const trimmedUsername = entry.Username.trim();
+
+      // Upsert by Username and Chrome Profile when provided
+      const query = { Username: trimmedUsername };
+      if (entry["Chrome Profile"] !== undefined) {
+        query["Chrome Profile"] = entry["Chrome Profile"];
+      }
+
+      const existing = await FBAccounts.findOne(query);
+
+      if (existing) {
+        const changed = Object.keys(entry).some(key => entry[key] !== existing[key]);
+        if (changed) {
+          await FBAccounts.updateOne(query, { $set: entry });
+          updated++;
+        }
+      } else {
+        await FBAccounts.create({ ...entry, Username: trimmedUsername });
+        added++;
+      }
+    }
+
+    res.json({ message: `✅ ${added} inserted, 🔁 ${updated} updated.` });
+  } catch (error) {
+    console.error("❌ Error in /FB_Accounts_Details:", error);
+    res.status(500).send("Server Error");
+  }
+});
+
 
 // ✅ POST to add dropdowns
 app.post('/add-dropdowns', async (req, res) => {
