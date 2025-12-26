@@ -211,6 +211,33 @@ app.post('/FB_Accounts_Details', async (req, res) => {
   }
 });
 
+// ✅ GET FB_Accounts_Details (list or filter)
+app.get('/FB_Accounts_Details', async (req, res) => {
+  try {
+    const { username, profile, page, limit } = req.query;
+    const query = {};
+
+    if (username && username.trim() !== '') query.Username = username.trim();
+    if (profile !== undefined && profile !== '') {
+      const num = Number(profile);
+      if (!Number.isNaN(num)) query['Chrome Profile'] = num;
+    }
+
+    const p = parseInt(page, 10) || 1;
+    const l = parseInt(limit, 10) || 1000;
+    const skip = (p - 1) * l;
+
+    const total = await FBAccounts.countDocuments(query);
+    const totalPages = Math.ceil(total / l);
+    const data = await FBAccounts.find(query).skip(skip).limit(l);
+
+    res.json({ data, totalPages });
+  } catch (error) {
+    console.error("❌ Error fetching FB accounts:", error);
+    res.status(500).send("Server Error");
+  }
+});
+
 
 // ✅ POST to add dropdowns
 app.post('/add-dropdowns', async (req, res) => {
@@ -285,10 +312,30 @@ app.patch('/links/:id', async (req, res) => {
 });
 
 /* ------------------ SERVER START ------------------ */
+// ✅ GET server status (running + FB accounts count)
+app.get('/status', async (req, res) => {
+  try {
+    const fbCount = await FBAccounts.countDocuments();
+    res.json({ status: 'running', fbAccounts: fbCount, uptime: process.uptime() });
+  } catch (err) {
+    console.error("❌ Error in /status:", err);
+    res.status(500).send("Server Error");
+  }
+});
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  (async () => {
+    try {
+      const fbCount = await FBAccounts.countDocuments();
+      console.log(`ℹ️ FB Accounts in DB: ${fbCount}`);
+    } catch (err) {
+      console.error("❌ Error counting FB accounts:", err);
+    }
+  })();
   console.log(`✅ POST /add-links → Links`);
   console.log(`✅ POST /FB_Data → FB_Data`);
+  console.log(`✅ POST /FB_Accounts_Details → FB_Accounts_Details`);
+  console.log(`✅ GET /FB_Accounts_Details → FB_Accounts_Details`);
   console.log(`✅ POST /add-dropdowns → All_Data`);
   console.log(`✅ GET /dropdowns → fetch grouped dropdowns`);
   console.log(`✅ GET /all-dropdowns → fetch flat dropdowns`);
